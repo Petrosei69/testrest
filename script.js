@@ -202,19 +202,6 @@ function renderAddresses(items) {
   });
 }
 
-function createCollapsibleBlock(title, content) {
-  return `
-    <div class="collapsible">
-      <div class="collapsible-header">
-        <span>${title}</span>
-        <span class="arrow">▼</span>
-      </div>
-      <div class="collapsible-content">
-        <p>${content.replace(/\n/g, '<br>')}</p>
-      </div>
-    </div>
-  `;
-}
 
 function formatText(textData, item) {
   if (typeof textData === 'string') {
@@ -234,66 +221,22 @@ function formatText(textData, item) {
   
   // Сначала заменяем плейсхолдеры в специфичном тексте
   let specificContent = (textData.content || '')
-    .replace(/&lt;Название&gt;/g, htmlEscape(item.restaurant))
-    .replace(/&lt;Адрес&gt;/g, htmlEscape(item.address))
-    .replace(/&lt;Способ проверки&gt;/g, htmlEscape(item.method))
+    .replace(/&lt;Название&gt;/g, item.restaurant)
+    .replace(/&lt;Адрес&gt;/g, item.address)
+    .replace(/&lt;Способ проверки&gt;/g, item.method)
     .replace(/&lt;Сервис для оформления доставки&gt;/g, 'нужный сервис доставки');
   
   // Теперь заменяем плейсхолдеры в общем шаблоне
   let result = generalTemplate
-    .replace(/&lt;ФИО&gt;/g, htmlEscape($fio.value))
-    .replace(/&lt;Название&gt;/g, htmlEscape(item.restaurant))
-    .replace(/&lt;Адрес&gt;/g, htmlEscape(item.address))
-    .replace(/&lt;Способ проверки&gt;/g, htmlEscape(item.method))
+    .replace(/&lt;ФИО&gt;/g, $fio.value)
+    .replace(/&lt;Название&gt;/g, item.restaurant)
+    .replace(/&lt;Адрес&gt;/g, item.address)
+    .replace(/&lt;Способ проверки&gt;/g, item.method)
     .replace(/{SPECIFIC_TEXT}/g, specificContent);
-  
-  // Добавляем сворачивающиеся блоки если есть
-  if (textData.collapsible_sections && textData.collapsible_sections.length > 0) {
-    let collapsibleHTML = '';
-    textData.collapsible_sections.forEach(section => {
-      collapsibleHTML += createCollapsibleBlock(section.title, section.content);
-    });
-    result += collapsibleHTML;
-  }
-  
-  // Добавляем формы заполнения если есть ссылки
-  let formLink = null;
-  
-  // Проверяем form_link в объекте
-  if (textData.form_link) {
-    formLink = textData.form_link;
-  }
-  // Fallback - ищем в тексте
-  else if (textData.content && textData.content.includes('forms.gle/')) {
-    const formMatch = textData.content.match(/https:\/\/forms\.gle\/[a-zA-Z0-9_-]+/);
-    if (formMatch) {
-      formLink = formMatch[0];
-    }
-  }
-  
-  if (formLink) {
-    result += `
-      <div class="report-section">
-        <h4>Заполнение формы</h4>
-        <p>После завершения посещения ресторана, пожалуйста, заполните отчет о проведенной проверке <strong>(не заполняйте отчет в самом ресторане, только после выхода из него, можете заполнить с ПК или со смартфона)</strong></p>
-        <a href="${formLink}" target="_blank" class="report-link">Заполнить отчет</a>
-        <p>После отправки отчета, пожалуйста, нажмите кнопку "Отправил отчет" ниже, чтобы ресторан отметился как проверенный. Спасибо!</p>
-        <button class="report-completed-btn" onclick="markAsCompleted('${htmlEscape(item.partner)}', '${htmlEscape(item.restaurant)}')">Отправил отчет</button>
-      </div>
-    `;
-  }
   
   return result.replace(/\n/g, '<br>');
 }
 
-function initCollapsibleBlocks() {
-  document.querySelectorAll('.collapsible-header').forEach(header => {
-    header.addEventListener('click', function() {
-      const collapsible = this.parentElement;
-      collapsible.classList.toggle('active');
-    });
-  });
-}
 
 async function onPick(item) {
   let details = document.getElementById('details');
@@ -317,11 +260,6 @@ async function onPick(item) {
   const formattedText = formatText(textData, item);
   details.querySelector('.text').innerHTML = formattedText;
   
-  // Инициализируем сворачивающиеся блоки после добавления контента
-  setTimeout(() => {
-    initCollapsibleBlocks();
-  }, 100);
-  
   details.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -339,14 +277,6 @@ async function performSearch() {
   } finally { hideLoading($btn, orig); }
 }
 
-function markAsCompleted(partner, restaurant) {
-  showStatus(`Ресторан "${restaurant}" отмечен как проверенный`, false);
-  // Здесь можно добавить логику отправки данных на сервер
-  const btn = event.target;
-  btn.textContent = 'Отчет отправлен ✓';
-  btn.disabled = true;
-  btn.style.background = '#27ae60';
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
   $fio.focus();
