@@ -6,6 +6,7 @@ const $addresses = document.getElementById('addresses');
 const $container = document.querySelector('.container');
 
 let excelData = { выборка: null, тексты: null };
+let restaurantTexts = null;
 
 const statusIndicator = document.createElement('div');
 statusIndicator.className = 'status-indicator';
@@ -40,12 +41,30 @@ function hideLoading(button, originalText) {
   button.textContent = originalText;
 }
 
+async function loadRestaurantTexts() {
+  try {
+    const response = await fetch('restaurant-texts.json');
+    if (!response.ok) {
+      throw new Error('Не удалось загрузить файл с текстами');
+    }
+    restaurantTexts = await response.json();
+    return true;
+  } catch (e) {
+    console.error('Ошибка загрузки текстов:', e);
+    showStatus('Ошибка загрузки текстов', true);
+    return false;
+  }
+}
+
 async function loadExcelFile() {
   try {
     if (location.protocol === 'file:') {
       showStatus('Откройте через http://localhost/ (не file://)', true);
       return false;
     }
+
+    // Загружаем JSON с текстами параллельно
+    const textsPromise = loadRestaurantTexts();
 
     // Сначала ищем рядом со страницей (new/data.xlsx), затем пробуем из корня проекта
     const candidatePaths = ['data.xlsx', 'Таблица для загрузки.xlsx', '../data.xlsx', '../Таблица для загрузки.xlsx'];
@@ -74,6 +93,9 @@ async function loadExcelFile() {
       // Лист "Тексты" может быть в подготовке — не блокируем работу, просто не будет инструкций
       excelData.тексты = [];
     }
+
+    // Ждем загрузки текстов
+    await textsPromise;
 
     showStatus(`Excel загружен (${excelData.выборка.length})`);
     return true;
@@ -115,12 +137,32 @@ async function findAssignments(fio) {
 }
 
 async function findText(partner, method) {
+  // Сначала пробуем найти в новой JSON структуре
+  if (!restaurantTexts) {
+    await loadRestaurantTexts();
+  }
+  
+  if (restaurantTexts && restaurantTexts.specific_texts) {
+    const np = normalizeString(partner);
+    const nm = normalizeString(method);
+    
+    // Ищем точное совпадение в JSON
+    for (const [key, textData] of Object.entries(restaurantTexts.specific_texts)) {
+      if (normalizeString(textData.partner) === np && normalizeString(textData.method) === nm) {
+        return textData;
+      }
+    }
+  }
+  
+  // Fallback на старую систему Excel если не найдено в JSON
   if (!excelData.тексты) { await loadExcelFile(); }
   if (!excelData.тексты || excelData.тексты.length < 3) return '';
+  
   const partnersRow = excelData.тексты[0] || [];
   const methodsRow = excelData.тексты[1] || [];
   const textsRow = excelData.тексты[2] || [];
   const np = normalizeString(partner), nm = normalizeString(method);
+  
   for (let i = 1; i < partnersRow.length; i++) {
     if (normalizeString(partnersRow[i]) === np && normalizeString(methodsRow[i]) === nm) {
       return textsRow[i] || '';
@@ -160,6 +202,99 @@ function renderAddresses(items) {
   });
 }
 
+function createCollapsibleBlock(title, content) {
+  return `
+    <div class="collapsible">
+      <div class="collapsible-header">
+        <span>${title}</span>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="collapsible-content">
+        <p>${content.replace(/\n/g, '<br>')}</p>
+      </div>
+    </div>
+  `;
+}
+
+function formatText(textData, item) {
+  if (typeof textData === 'string') {
+    // Старый формат из Excel
+    return textData.replace(/\n/g, '<br>');
+  }
+  
+  if (!textData || typeof textData !== 'object') {
+    return 'Инструкция не найдена для данной комбинации партнера и способа проверки.';
+  }
+  
+  // Новый формат из JSON
+  let generalTemplate = '';
+  if (restaurantTexts && restaurantTexts.templates && restaurantTexts.templates.general) {
+    generalTemplate = restaurantTexts.templates.general.content;
+  }
+  
+  // Сначала заменяем плейсхолдеры в специфичном тексте
+  let specificContent = (textData.content || '')
+    .replace(/&lt;Название&gt;/g, htmlEscape(item.restaurant))
+    .replace(/&lt;Адрес&gt;/g, htmlEscape(item.address))
+    .replace(/&lt;Способ проверки&gt;/g, htmlEscape(item.method))
+    .replace(/&lt;Сервис для оформления доставки&gt;/g, 'нужный сервис доставки');
+  
+  // Теперь заменяем плейсхолдеры в общем шаблоне
+  let result = generalTemplate
+    .replace(/&lt;ФИО&gt;/g, htmlEscape($fio.value))
+    .replace(/&lt;Название&gt;/g, htmlEscape(item.restaurant))
+    .replace(/&lt;Адрес&gt;/g, htmlEscape(item.address))
+    .replace(/&lt;Способ проверки&gt;/g, htmlEscape(item.method))
+    .replace(/{SPECIFIC_TEXT}/g, specificContent);
+  
+  // Добавляем сворачивающиеся блоки если есть
+  if (textData.collapsible_sections && textData.collapsible_sections.length > 0) {
+    let collapsibleHTML = '';
+    textData.collapsible_sections.forEach(section => {
+      collapsibleHTML += createCollapsibleBlock(section.title, section.content);
+    });
+    result += collapsibleHTML;
+  }
+  
+  // Добавляем формы заполнения если есть ссылки
+  let formLink = null;
+  
+  // Проверяем form_link в объекте
+  if (textData.form_link) {
+    formLink = textData.form_link;
+  }
+  // Fallback - ищем в тексте
+  else if (textData.content && textData.content.includes('forms.gle/')) {
+    const formMatch = textData.content.match(/https:\/\/forms\.gle\/[a-zA-Z0-9_-]+/);
+    if (formMatch) {
+      formLink = formMatch[0];
+    }
+  }
+  
+  if (formLink) {
+    result += `
+      <div class="report-section">
+        <h4>Заполнение формы</h4>
+        <p>После завершения посещения ресторана, пожалуйста, заполните отчет о проведенной проверке <strong>(не заполняйте отчет в самом ресторане, только после выхода из него, можете заполнить с ПК или со смартфона)</strong></p>
+        <a href="${formLink}" target="_blank" class="report-link">Заполнить отчет</a>
+        <p>После отправки отчета, пожалуйста, нажмите кнопку "Отправил отчет" ниже, чтобы ресторан отметился как проверенный. Спасибо!</p>
+        <button class="report-completed-btn" onclick="markAsCompleted('${htmlEscape(item.partner)}', '${htmlEscape(item.restaurant)}')">Отправил отчет</button>
+      </div>
+    `;
+  }
+  
+  return result.replace(/\n/g, '<br>');
+}
+
+function initCollapsibleBlocks() {
+  document.querySelectorAll('.collapsible-header').forEach(header => {
+    header.addEventListener('click', function() {
+      const collapsible = this.parentElement;
+      collapsible.classList.toggle('active');
+    });
+  });
+}
+
 async function onPick(item) {
   let details = document.getElementById('details');
   if (!details) {
@@ -169,7 +304,8 @@ async function onPick(item) {
     details.innerHTML = '<div class="tester"></div><div class="place"></div><div class="text"></div>';
     $container.appendChild(details);
   }
-  const text = await findText(item.partner, item.method);
+  
+  const textData = await findText(item.partner, item.method);
   details.style.display = 'block';
   details.querySelector('.tester').innerHTML = `Тестировщик: <strong>${htmlEscape($fio.value)}</strong>`;
   details.querySelector('.place').innerHTML = `
@@ -177,7 +313,15 @@ async function onPick(item) {
     <div><em class="addr-line">${htmlEscape(item.address)}</em></div>
     <div><span class="method-strong">${htmlEscape(item.method)}</span></div>
   `;
-  details.querySelector('.text').innerHTML = (text || '').replace(/\n/g, '<br>');
+  
+  const formattedText = formatText(textData, item);
+  details.querySelector('.text').innerHTML = formattedText;
+  
+  // Инициализируем сворачивающиеся блоки после добавления контента
+  setTimeout(() => {
+    initCollapsibleBlocks();
+  }, 100);
+  
   details.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -193,6 +337,15 @@ async function performSearch() {
   } catch (e) {
     console.error(e); showStatus('Ошибка поиска', true);
   } finally { hideLoading($btn, orig); }
+}
+
+function markAsCompleted(partner, restaurant) {
+  showStatus(`Ресторан "${restaurant}" отмечен как проверенный`, false);
+  // Здесь можно добавить логику отправки данных на сервер
+  const btn = event.target;
+  btn.textContent = 'Отчет отправлен ✓';
+  btn.disabled = true;
+  btn.style.background = '#27ae60';
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
