@@ -30,33 +30,7 @@ function setCompletionStatus(partner, restaurant, method, completed) {
 function toggleCompletion(partner, restaurant, method) {
   const currentStatus = getCompletionStatus(partner, restaurant, method);
   setCompletionStatus(partner, restaurant, method, !currentStatus);
-  updateProgressStats();
   return !currentStatus;
-}
-
-function updateProgressStats() {
-  const progressStats = document.getElementById('progress-stats');
-  const completedCountEl = document.getElementById('completed-count');
-  const totalCountEl = document.getElementById('total-count');
-  const progressFill = document.getElementById('progress-fill');
-  
-  if (!progressStats || !completedCountEl || !totalCountEl || !progressFill) return;
-  
-  const allAddresses = document.querySelectorAll('.addr');
-  const completedAddresses = document.querySelectorAll('.addr.completed');
-  
-  const total = allAddresses.length;
-  const completed = completedAddresses.length;
-  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-  
-  completedCountEl.textContent = completed;
-  totalCountEl.textContent = total;
-  progressFill.style.width = `${percentage}%`;
-  
-  // Показываем статистику только если есть рестораны
-  if (total > 0) {
-    progressStats.style.display = 'block';
-  }
 }
 
 const statusIndicator = document.createElement('div');
@@ -280,9 +254,6 @@ function renderAddresses(items) {
       }
     });
   });
-
-  // Обновляем статистику после рендеринга
-  setTimeout(() => updateProgressStats(), 100);
 }
 
 
@@ -317,7 +288,16 @@ function formatText(textData, item) {
     .replace(/&lt;Способ проверки&gt;/g, item.method)
     .replace(/{SPECIFIC_TEXT}/g, specificContent);
   
+  // Делаем ссылки кликабельными
+  result = makeLinksClickable(result);
+  
   return result.replace(/\n/g, '<br>');
+}
+
+function makeLinksClickable(text) {
+  // Регулярное выражение для поиска URL
+  const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
+  return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
 

@@ -74,49 +74,35 @@ button { width: 100%; padding: 16px 24px; border: none; border-radius: var(--rad
 button:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); }
 button:disabled { opacity: .6; cursor: not-allowed; }
 
-/* Статистика прогресса */
-.progress-stats {
-  margin-top: 24px;
-  padding: 20px;
-  background: linear-gradient(135deg, rgba(61,162,135,.06) 0%, rgba(79,181,153,.03) 100%);
-  border: 1px solid rgba(61,162,135,.2);
-  border-radius: var(--radius-small);
+
+.addresses { 
+  margin-top: 24px; 
+  display: grid; 
+  grid-template-columns: 1fr; 
+  gap: 20px; 
+  max-height: 60vh; 
+  overflow-y: auto; 
+  padding-right: 8px;
 }
 
-.stats-header {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--primary);
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+/* Стили для скроллбара */
+.addresses::-webkit-scrollbar {
+  width: 6px;
 }
 
-.stats-content {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin-bottom: 16px;
-  text-align: center;
+.addresses::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
 }
 
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: #e1e8ed;
-  border-radius: 4px;
-  overflow: hidden;
+.addresses::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
 }
 
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
-  border-radius: 4px;
-  transition: width 0.5s ease;
-  width: 0%;
+.addresses::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
 }
-
-.addresses { margin-top: 24px; display: grid; grid-template-columns: 1fr; gap: 20px; }
 .addr { 
   background: var(--white); 
   border: 2px solid var(--border); 
@@ -143,15 +129,6 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   border-color: #c3e6cb;
 }
 
-.addr.completed .addr-header::after {
-  content: "✓";
-  position: absolute;
-  right: 20px;
-  top: 20px;
-  font-size: 24px;
-  color: #28a745;
-  font-weight: bold;
-}
 
 /* Кнопка переключения состояния */
 .completion-toggle {
@@ -477,6 +454,15 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 
 .text br + br {
   margin-bottom: 8px;
+}
+
+/* Стили для горизонтальных линий */
+.text hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary) 0%, transparent 100%);
+  margin: 24px 0;
+  border-radius: 1px;
 }
 
 @media (max-width: 768px) {
