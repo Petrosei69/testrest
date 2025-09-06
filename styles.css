@@ -107,7 +107,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   background: var(--white); 
   border: 2px solid var(--border); 
   border-left: 4px solid var(--primary); 
-  padding: 20px; 
+  padding: 20px 60px 20px 20px; 
   border-radius: var(--radius-small); 
   cursor: pointer; 
   transition: all .3s; 
@@ -456,14 +456,6 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   margin-bottom: 8px;
 }
 
-/* Стили для горизонтальных линий */
-.text hr {
-  border: none;
-  height: 2px;
-  background: linear-gradient(90deg, var(--primary) 0%, transparent 100%);
-  margin: 24px 0;
-  border-radius: 1px;
-}
 
 @media (max-width: 768px) {
   .container, .container.with-result { display: block; padding: 16px; }
