@@ -8,6 +8,57 @@ const $container = document.querySelector('.container');
 let excelData = { выборка: null, тексты: null };
 let restaurantTexts = null;
 
+// Управление состояниями выполнения ресторанов
+function getCompletionKey(partner, restaurant, method) {
+  return `${partner}_${restaurant}_${method}`.replace(/\s+/g, '_');
+}
+
+function getCompletionStatus(partner, restaurant, method) {
+  const key = getCompletionKey(partner, restaurant, method);
+  return localStorage.getItem(`completion_${key}`) === 'true';
+}
+
+function setCompletionStatus(partner, restaurant, method, completed) {
+  const key = getCompletionKey(partner, restaurant, method);
+  if (completed) {
+    localStorage.setItem(`completion_${key}`, 'true');
+  } else {
+    localStorage.removeItem(`completion_${key}`);
+  }
+}
+
+function toggleCompletion(partner, restaurant, method) {
+  const currentStatus = getCompletionStatus(partner, restaurant, method);
+  setCompletionStatus(partner, restaurant, method, !currentStatus);
+  updateProgressStats();
+  return !currentStatus;
+}
+
+function updateProgressStats() {
+  const progressStats = document.getElementById('progress-stats');
+  const completedCountEl = document.getElementById('completed-count');
+  const totalCountEl = document.getElementById('total-count');
+  const progressFill = document.getElementById('progress-fill');
+  
+  if (!progressStats || !completedCountEl || !totalCountEl || !progressFill) return;
+  
+  const allAddresses = document.querySelectorAll('.addr');
+  const completedAddresses = document.querySelectorAll('.addr.completed');
+  
+  const total = allAddresses.length;
+  const completed = completedAddresses.length;
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+  
+  completedCountEl.textContent = completed;
+  totalCountEl.textContent = total;
+  progressFill.style.width = `${percentage}%`;
+  
+  // Показываем статистику только если есть рестораны
+  if (total > 0) {
+    progressStats.style.display = 'block';
+  }
+}
+
 const statusIndicator = document.createElement('div');
 statusIndicator.className = 'status-indicator';
 document.body.appendChild(statusIndicator);
@@ -179,27 +230,59 @@ function renderAddresses(items) {
     return;
   }
 
-  const html = items.map(item => `
-    <div class="addr" data-partner="${htmlEscape(item.partner)}" data-method="${htmlEscape(item.method)}" data-restaurant="${htmlEscape(item.restaurant)}" data-address="${htmlEscape(item.address)}" data-city="${htmlEscape(item.city)}">
-      <div class="addr-header"><strong>${htmlEscape(item.partner)}</strong> — ${htmlEscape(item.restaurant)}</div>
-      <div class="addr-details"><em class="addr-line">${htmlEscape(item.address)}</em><br><span class="method-strong">${htmlEscape(item.method)}</span></div>
-    </div>
-  `).join('');
+  const html = items.map(item => {
+    const isCompleted = getCompletionStatus(item.partner, item.restaurant, item.method);
+    const statusClass = isCompleted ? 'completed' : 'pending';
+    
+    return `
+      <div class="addr ${statusClass}" data-partner="${htmlEscape(item.partner)}" data-method="${htmlEscape(item.method)}" data-restaurant="${htmlEscape(item.restaurant)}" data-address="${htmlEscape(item.address)}" data-city="${htmlEscape(item.city)}">
+        <div class="addr-header"><strong>${htmlEscape(item.partner)}</strong> — ${htmlEscape(item.restaurant)}</div>
+        <div class="addr-details"><em class="addr-line">${htmlEscape(item.address)}</em><br><span class="method-strong">${htmlEscape(item.method)}</span></div>
+        <div class="completion-toggle" title="${isCompleted ? 'Отменить выполнение' : 'Отметить как выполненное'}"></div>
+      </div>
+    `;
+  }).join('');
 
   $addresses.innerHTML = html;
   $addresses.style.display = 'block';
   $container.classList.add('with-result');
 
   document.querySelectorAll('.addr').forEach(node => {
-    node.addEventListener('click', async () => {
-      const partner = node.dataset.partner;
-      const method = node.dataset.method;
-      const restaurant = node.dataset.restaurant || '';
-      const address = node.dataset.address || '';
-      const city = node.dataset.city || '';
-      await onPick({ partner, method, restaurant, address, city });
+    const partner = node.dataset.partner;
+    const method = node.dataset.method;
+    const restaurant = node.dataset.restaurant || '';
+    const address = node.dataset.address || '';
+    const city = node.dataset.city || '';
+
+    // Обработчик клика на основную область (открытие инструкций)
+    node.addEventListener('click', async (e) => {
+      if (!e.target.classList.contains('completion-toggle')) {
+        await onPick({ partner, method, restaurant, address, city });
+      }
+    });
+
+    // Обработчик клика на кнопку переключения состояния
+    const toggleBtn = node.querySelector('.completion-toggle');
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newStatus = toggleCompletion(partner, restaurant, method);
+      
+      if (newStatus) {
+        node.classList.remove('pending');
+        node.classList.add('completed');
+        toggleBtn.title = 'Отменить выполнение';
+        showStatus(`Ресторан "${restaurant}" отмечен как выполненный`, false);
+      } else {
+        node.classList.remove('completed');
+        node.classList.add('pending');
+        toggleBtn.title = 'Отметить как выполненное';
+        showStatus(`Отметка выполнения снята с "${restaurant}"`, false);
+      }
     });
   });
+
+  // Обновляем статистику после рендеринга
+  setTimeout(() => updateProgressStats(), 100);
 }
 
 

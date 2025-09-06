@@ -74,9 +74,121 @@ button { width: 100%; padding: 16px 24px; border: none; border-radius: var(--rad
 button:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); }
 button:disabled { opacity: .6; cursor: not-allowed; }
 
-.addresses { margin-top: 24px; display: grid; grid-template-columns: 1fr; gap: 16px; }
-.addr { background: var(--white); border: 2px solid var(--border); border-left: 4px solid var(--primary); padding: 20px; border-radius: var(--radius-small); cursor: pointer; transition: all .3s; }
+/* Статистика прогресса */
+.progress-stats {
+  margin-top: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(61,162,135,.06) 0%, rgba(79,181,153,.03) 100%);
+  border: 1px solid rgba(61,162,135,.2);
+  border-radius: var(--radius-small);
+}
+
+.stats-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stats-content {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e1e8ed;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  width: 0%;
+}
+
+.addresses { margin-top: 24px; display: grid; grid-template-columns: 1fr; gap: 20px; }
+.addr { 
+  background: var(--white); 
+  border: 2px solid var(--border); 
+  border-left: 4px solid var(--primary); 
+  padding: 20px; 
+  border-radius: var(--radius-small); 
+  cursor: pointer; 
+  transition: all .3s; 
+  position: relative;
+}
+
 .addr:hover { transform: translateX(6px) translateY(-2px); box-shadow: var(--shadow-hover); }
+
+/* Состояния выполнения */
+.addr.pending {
+  background: #f8f9fa;
+  border-left-color: #6c757d;
+  opacity: 0.8;
+}
+
+.addr.completed {
+  background: #d4edda;
+  border-left-color: #28a745;
+  border-color: #c3e6cb;
+}
+
+.addr.completed .addr-header::after {
+  content: "✓";
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  font-size: 24px;
+  color: #28a745;
+  font-weight: bold;
+}
+
+/* Кнопка переключения состояния */
+.completion-toggle {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 2px solid #6c757d;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.completion-toggle:hover {
+  border-color: var(--primary);
+  background: rgba(61, 162, 135, 0.1);
+}
+
+.addr.completed .completion-toggle {
+  background: #28a745;
+  border-color: #28a745;
+}
+
+.addr.completed .completion-toggle::after {
+  content: "✓";
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
 
 /* Курсив для адреса */
 .addr-line { font-style: italic; color: var(--text-dark); }
@@ -219,44 +331,38 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   transform: none;
 }
 
-/* Специальные блоки с фоном */
-.attention-block {
-  background: #fff3cd;
-  border: 2px solid #ffeaa7;
-  border-left: 4px solid #f39c12;
-  border-radius: var(--radius-small);
-  padding: 16px 20px;
-  margin: 20px 0;
-  font-weight: 500;
-}
-
-.important-notice {
-  background: linear-gradient(135deg, rgba(61,162,135,.08) 0%, rgba(79,181,153,.04) 100%);
-  border: 2px solid var(--primary);
-  border-radius: var(--radius-small);
-  padding: 18px 22px;
-  margin: 20px 0;
-  font-weight: 500;
-}
-
-.important-info {
-  background: #e3f2fd;
-  border: 2px solid #2196f3;
-  border-left: 4px solid #1976d2;
-  border-radius: var(--radius-small);
-  padding: 16px 20px;
-  margin: 20px 0;
-  font-weight: 500;
-}
-
-.warning-block {
-  background: #ffebee;
-  border: 2px solid #f44336;
-  border-left: 4px solid #d32f2f;
+/* Блоки с заливкой для выделения */
+.highlight-block {
+  background: #fff9c4;
+  border: 1px solid #f9f06b;
+  border-left: 4px solid #f59e0b;
   border-radius: var(--radius-small);
   padding: 16px 20px;
   margin: 16px 0;
   font-weight: 500;
+  line-height: 1.6;
+}
+
+.warning-highlight {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius-small);
+  padding: 16px 20px;
+  margin: 16px 0;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.info-highlight {
+  background: #dbeafe;
+  border: 1px solid #60a5fa;
+  border-left: 4px solid #3b82f6;
+  border-radius: var(--radius-small);
+  padding: 16px 20px;
+  margin: 16px 0;
+  font-weight: 500;
+  color: #1e40af;
 }
 
 /* Улучшенная типографика для текста */
@@ -320,26 +426,57 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 
 /* Специальные стили для чек-листов */
 .checklist {
-  list-style-type: none;
-  padding-left: 0;
-  margin: 16px 0;
+  background: #f8f9fa;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  padding: 20px;
+  margin: 20px 0;
+  line-height: 1.8;
 }
 
 .checklist li {
-  background: #f8f9fa;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--primary);
   margin: 8px 0;
-  padding: 12px 16px;
-  border-radius: var(--radius-small);
-  font-size: 14px;
-  line-height: 1.5;
-  transition: all 0.2s ease;
+  padding: 4px 0;
+  font-size: 15px;
 }
 
-.checklist li:hover {
-  background: #e9ecef;
-  transform: translateX(2px);
+/* Стили для ☐ символов */
+.text p:has-text("☐") {
+  line-height: 1.8;
+  margin: 6px 0;
+}
+
+/* Улучшенное форматирование ссылок */
+.text a {
+  color: var(--primary);
+  text-decoration: underline;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.text a:hover {
+  color: var(--primary-dark);
+  background: rgba(61, 162, 135, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+/* Улучшенное форматирование заголовков */
+.text strong {
+  color: var(--text-dark);
+  font-weight: 700;
+  font-size: 16px;
+  display: block;
+  margin: 20px 0 12px 0;
+}
+
+/* Отступы между секциями */
+.text p {
+  margin-bottom: 12px;
+}
+
+.text br + br {
+  margin-bottom: 8px;
 }
 
 @media (max-width: 768px) {
