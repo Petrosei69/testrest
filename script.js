@@ -18,13 +18,20 @@ function getCompletionStatus(partner, restaurant, method) {
   return localStorage.getItem(`completion_${key}`) === 'true';
 }
 
-function setCompletionStatus(partner, restaurant, method, completed) {
+async function setCompletionStatus(partner, restaurant, method, completed) {
   const key = getCompletionKey(partner, restaurant, method);
   if (completed) {
     localStorage.setItem(`completion_${key}`, 'true');
   } else {
     localStorage.removeItem(`completion_${key}`);
   }
+  try {
+    await fetch('/api/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fio: document.getElementById('fio').value.trim(), partner, restaurant, method, completed })
+    });
+  } catch (_) {}
 }
 
 function toggleCompletion(partner, restaurant, method) {
