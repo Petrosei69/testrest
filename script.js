@@ -296,12 +296,9 @@ function formatText(textData, item) {
   // Делаем ссылки кликабельными
   result = makeLinksClickable(result);
 
-  // Убираем лишние пустые строки и не вставляем <br> если уже есть HTML
+  // Сохраняем переносы строк как в тексте (минимальная нормализация)
   result = result
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
-    .trim();
+    .replace(/\r\n/g, '\n');
 
   const hasHtml = /<\/?[a-z][\s\S]*?>/i.test(result);
   return hasHtml ? result : result.replace(/\n/g, '<br>');
