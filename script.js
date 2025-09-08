@@ -93,10 +93,11 @@ async function loadExcelFile() {
 
     // Сначала ищем рядом со страницей (new/data.xlsx), затем пробуем из корня проекта
     const candidatePaths = ['data.xlsx', 'Таблица для загрузки.xlsx', '../data.xlsx', '../Таблица для загрузки.xlsx'];
+    const withBust = (p) => `${p}${p.includes('?') ? '&' : '?'}v=${Date.now()}`;
     let response = null;
     for (const path of candidatePaths) {
       try {
-        const r = await fetch(encodeURI(path));
+        const r = await fetch(encodeURI(withBust(path)), { cache: 'no-store' });
         if (r.ok) { response = r; break; }
       } catch (_) {}
     }
@@ -260,7 +261,11 @@ function renderAddresses(items) {
 function formatText(textData, item) {
   if (typeof textData === 'string') {
     // Старый формат из Excel
-    return textData.replace(/\n/g, '<br>');
+    const cleaned = (textData || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    return cleaned.replace(/\n/g, '<br>');
   }
   
   if (!textData || typeof textData !== 'object') {
@@ -290,14 +295,37 @@ function formatText(textData, item) {
   
   // Делаем ссылки кликабельными
   result = makeLinksClickable(result);
-  
-  return result.replace(/\n/g, '<br>');
+
+  // Убираем лишние пустые строки и не вставляем <br> если уже есть HTML
+  result = result
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
+    .trim();
+
+  const hasHtml = /<\/?[a-z][\s\S]*?>/i.test(result);
+  return hasHtml ? result : result.replace(/\n/g, '<br>');
 }
 
 function makeLinksClickable(text) {
   // Регулярное выражение для поиска URL
   const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
   return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function initCollapsibles(root) {
+  if (!root) return;
+  const blocks = root.querySelectorAll('.collapsible');
+  blocks.forEach(block => {
+    const header = block.querySelector('.collapsible-header');
+    if (!header) return;
+    // избегаем двойной подписки
+    if (header.dataset.bound === '1') return;
+    header.dataset.bound = '1';
+    header.addEventListener('click', () => {
+      block.classList.toggle('active');
+    });
+  });
 }
 
 
@@ -322,6 +350,7 @@ async function onPick(item) {
   
   const formattedText = formatText(textData, item);
   details.querySelector('.text').innerHTML = formattedText;
+  initCollapsibles(details.querySelector('.text'));
   
   details.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
